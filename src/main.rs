@@ -25,12 +25,19 @@ pub struct Thing {
 
 #[tokio::main]
 async fn main() {
+    // GET /hello/warp => 200 OK with body "Hello, warp!"
+    // let hello = warp::path!("hello" / String)
+    //     .map(|name| format!("Hello, {}!", name));
+
+    // warp::serve(hello)
+    //     .run(([127, 0, 0, 1], 3030))
+    //     .await;
     let report_route = warp::path("report")
         .and(warp::get())
         .and_then(report_handler);
 
     println!("Server started at localhost:8080");
-    warp::serve(report_route).run(([0, 0, 0, 0], 8080)).await;
+    warp::serve(report_route).run(([127, 0, 0, 1], 3030)).await;
 }
 
 async fn report_handler() -> Result<impl Reply> {

@@ -3,26 +3,25 @@ use chrono::prelude::*;
 use std::collections::HashMap;
 use std::fs::{self, remove_file};
 use uuid::Uuid;
-use xlsxwriter::{DateTime as XLSDateTime, Format, Workbook, Worksheet};
+use rust_xlsxwriter::{ExcelDateTime, Format, Workbook, Worksheet};
 
 const FONT_SIZE: f64 = 12.0;
 
 pub fn create_xlsx(values: Vec<Thing>) -> Vec<u8> {
-    let uuid = Uuid::new_v4().to_string();
-    let workbook = Workbook::new(&uuid);
-    let mut sheet = workbook.add_worksheet(None).expect("can add sheet");
+    let uuid = format!("{}.xlsx", Uuid::new_v4());
+    //let uuid = Uuid::new_v4().to_string();
+    let mut workbook = Workbook::new();
+    let mut sheet = workbook.add_worksheet();
 
     let mut width_map: HashMap<u16, usize> = HashMap::new();
 
     create_headers(&mut sheet, &mut width_map);
 
-    let fmt = workbook
-        .add_format()
+    let fmt =  Format::new()
         .set_text_wrap()
         .set_font_size(FONT_SIZE);
 
-    let date_fmt = workbook
-        .add_format()
+    let date_fmt =  Format::new()
         .set_num_format("dd/mm/yyyy hh:mm:ss AM/PM")
         .set_font_size(FONT_SIZE);
 
@@ -31,10 +30,12 @@ pub fn create_xlsx(values: Vec<Thing>) -> Vec<u8> {
     }
 
     width_map.iter().for_each(|(k, v)| {
-        let _ = sheet.set_column(*k as u16, *k as u16, *v as f64 * 1.2, Some(&fmt));
+        sheet.set_column_width(*k, *v as f64);
+        //let _ = sheet.set_column(*k as u16, *k as u16, *v as f64 * 1.2, Some(&fmt));
     });
 
-    workbook.close().expect("workbook can be closed");
+    //workbook.close().expect("workbook can be closed");
+    workbook.save(&uuid);
 
     let result = fs::read(&uuid).expect("can read file");
     remove_file(&uuid).expect("can delete file");
@@ -55,7 +56,7 @@ fn add_row(
     add_string_column(row, 4, &thing.name, sheet, width_map);
     add_string_column(row, 5, &thing.text, sheet, width_map);
 
-    let _ = sheet.set_row(row, FONT_SIZE, None);
+    //let _ = sheet.set_row(row, FONT_SIZE, None);
 }
 
 fn add_string_column(
@@ -65,7 +66,7 @@ fn add_string_column(
     sheet: &mut Worksheet,
     mut width_map: &mut HashMap<u16, usize>,
 ) {
-    let _ = sheet.write_string(row + 1, column, data, None);
+    let _ = sheet.write_string(row + 1, column, data);
     set_new_max_width(column, data.len(), &mut width_map);
 }
 
@@ -77,16 +78,18 @@ fn add_date_column(
     mut width_map: &mut HashMap<u16, usize>,
     date_fmt: &Format,
 ) {
-    let d = XLSDateTime::new(
-        date.year() as i16,
-        date.month() as i8,
-        date.day() as i8,
-        date.hour() as i8,
-        date.minute() as i8,
-        date.second() as f64,
-    );
-
-    let _ = sheet.write_datetime(row + 1, column, &d, Some(date_fmt));
+    let d = ExcelDateTime::from_timestamp(date.timestamp()).unwrap();
+    // let d = ExcelDateTime::new(
+    //     date.year() as i16,
+    //     date.month() as i8,
+    //     date.day() as i8,
+    //     date.hour() as i8,
+    //     date.minute() as i8,
+    //     date.second() as f64,
+    // );
+    let format1 = Format::new().set_num_format("dd/mm/yyyy hh:mm");
+    let _ = sheet.write_datetime_with_format(row + 1, column, d, &format1);
+    //let _ = sheet.write_datetime(row + 1, column, &d, Some(date_fmt));
     set_new_max_width(column, 26, &mut width_map);
 }
 
@@ -104,12 +107,12 @@ fn set_new_max_width(col: u16, new: usize, width_map: &mut HashMap<u16, usize>) 
 }
 
 fn create_headers(sheet: &mut Worksheet, mut width_map: &mut HashMap<u16, usize>) {
-    let _ = sheet.write_string(0, 0, "Id", None);
-    let _ = sheet.write_string(0, 1, "StartDate", None);
-    let _ = sheet.write_string(0, 2, "EndDate", None);
-    let _ = sheet.write_string(0, 3, "Project", None);
-    let _ = sheet.write_string(0, 4, "Name", None);
-    let _ = sheet.write_string(0, 5, "Text", None);
+    let _ = sheet.write_string(0, 0, "Id");
+    let _ = sheet.write_string(0, 1, "StartDate");
+    let _ = sheet.write_string(0, 2, "EndDate");
+    let _ = sheet.write_string(0, 3, "Project");
+    let _ = sheet.write_string(0, 4, "Name");
+    let _ = sheet.write_string(0, 5, "Text");
 
     set_new_max_width(0, "Id".len(), &mut width_map);
     set_new_max_width(1, "StartDate".len(), &mut width_map);
